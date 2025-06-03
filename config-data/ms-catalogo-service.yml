@@ -1,17 +1,92 @@
 server:
-  port: ${PORT:${SERVER_PORT:0}}
-spring:
+  port: ${PORT:${SERVERS_PORT:0}}
+  error:
+    include-message: always
+    include-binding-errors: always
 
+spring:
+  application:
+    name: ms-auth-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:development}
+  config:
+    import:
+      - optional:configserver:http://${CONFIG_SERVER_USER:root}:${CONFIG_SERVER_PASSWORD:123456}@${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:7071}
+      - optional:file:./config/
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=10m
   jpa:
     hibernate:
       ddl-auto: update
+    generate-ddl: true
     show-sql: true
-
+    format-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
   datasource:
-    url: jdbc:mysql://localhost:3306/catalogo
-    username: root
-    password: ""
     driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ms_auth
+    username: root
+    password:
+  sql:
+    init:
+      mode: never
+
+logging:
+  level:
+    root: WARN
+    com.example.mscatalogo: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers,env
+  endpoint:
+    health:
+      show-details: when-authorized
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: Microservicio de catálogo de productos textiles
+    developer: Tu Empresa Textil
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8090}/eureka
+    fetch-registry: true
+    register-with-eureka: true
+    enabled: true
+  instance:
+    hostname: ${HOSTNAME:localhost}
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+  jwt:
+    secret: secret
 
 springdoc:
   api-docs:
@@ -20,10 +95,43 @@ springdoc:
     enabled: true
     path: /doc/swagger-ui.html
 
+---
+
+spring:
+  config:
+    activate:
+      on-profile: development
+  datasource:
+    url: jdbc:mysql://localhost:3306/catalogo_dev?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: true
+
 eureka:
   client:
-    serviceUrl:
-      defaultZone: http://localhost:8090/eureka
-  instance:
-    hostname: localhost
-
+    enabled: false
