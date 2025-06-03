@@ -5,50 +5,49 @@ spring:
   cloud:
     gateway:
       routes:
-        # Ruta directa a IP:Puerto (sin Eureka)
-        - id: categorias-direct
-          uri: http://localhost:65234
+        # Ruta para /categoria -> /api/categorias (puerto fijo)
+        - id: categorias-route
+          uri: http://localhost:8081
           predicates:
             - Path=/categoria
           filters:
             - SetPath=/api/categorias
 
-        - id: productos-direct
-          uri: http://localhost:65234
+        # Ruta para /producto -> /api/productos (puerto fijo)
+        - id: productos-route
+          uri: http://localhost:8081
           predicates:
             - Path=/producto
           filters:
             - SetPath=/api/productos
 
         # Rutas API directas
-        - id: api-categorias-direct
-          uri: http://localhost:65234
+        - id: api-categorias
+          uri: http://localhost:8081
           predicates:
             - Path=/api/categorias
-            
-        - id: api-productos-direct
-          uri: http://localhost:65234
+
+        - id: api-productos
+          uri: http://localhost:8081
           predicates:
             - Path=/api/productos/**
 
-        # Actuator
-        - id: actuator-direct
-          uri: http://localhost:65234
+        # Actuator y Swagger
+        - id: actuator
+          uri: http://localhost:8081
           predicates:
             - Path=/actuator/**
 
-        # Swagger
-        - id: swagger-direct
-          uri: http://localhost:65234
+        - id: swagger
+          uri: http://localhost:8081
           predicates:
             - Path=/doc/**
 
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
-    org.springframework.cloud.gateway.route: DEBUG
 
-# Deshabilitar Eureka para el gateway temporalmente
+# Deshabilitar Eureka temporalmente
 eureka:
   client:
     enabled: false
