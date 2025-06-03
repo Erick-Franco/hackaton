@@ -1,67 +1,54 @@
 server:
   port: 8085
 
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: http://localhost:8090/eureka
-  instance:
-    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
-
 spring:
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
       routes:
-        # Ruta simple para /categoria -> /api/categorias
-        - id: categoria-route
-          uri: lb://ms-catalogo-service
-          predicates:
-            - Path=/categoria/**
-          filters:
-            - StripPrefix=1
-            - PrefixPath=/api/categorias
-
-        # Ruta simple para /categoria (sin barra final)
-        - id: categoria-root
-          uri: lb://ms-catalogo-service
+        # Ruta directa a IP:Puerto (sin Eureka)
+        - id: categorias-direct
+          uri: http://localhost:65234
           predicates:
             - Path=/categoria
           filters:
-            - PrefixPath=/api/categorias
+            - SetPath=/api/categorias
 
-        # Ruta simple para /producto -> /api/productos  
-        - id: producto-route
-          uri: lb://ms-catalogo-service
-          predicates:
-            - Path=/producto/**
-          filters:
-            - StripPrefix=1
-            - PrefixPath=/api/productos
-
-        # Ruta simple para /producto (sin barra final)
-        - id: producto-root
-          uri: lb://ms-catalogo-service
+        - id: productos-direct
+          uri: http://localhost:65234
           predicates:
             - Path=/producto
           filters:
-            - PrefixPath=/api/productos
+            - SetPath=/api/productos
 
-        # Rutas directas sin modificación
-        - id: catalogo-api-direct
-          uri: lb://ms-catalogo-service
+        # Rutas API directas
+        - id: api-categorias-direct
+          uri: http://localhost:65234
           predicates:
-            - Path=/api/**
+            - Path=/api/categorias
+            
+        - id: api-productos-direct
+          uri: http://localhost:65234
+          predicates:
+            - Path=/api/productos/**
 
-        # Autenticación
-        - id: auth-service
-          uri: lb://ms-auth-service
+        # Actuator
+        - id: actuator-direct
+          uri: http://localhost:65234
           predicates:
-            - Path=/auth/**
+            - Path=/actuator/**
+
+        # Swagger
+        - id: swagger-direct
+          uri: http://localhost:65234
+          predicates:
+            - Path=/doc/**
 
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.route: DEBUG
+
+# Deshabilitar Eureka para el gateway temporalmente
+eureka:
+  client:
+    enabled: false
