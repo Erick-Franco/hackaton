@@ -16,47 +16,52 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # Ruta para /categoria -> /api/categorias (compatibilidad)
-        - id: categoria-legacy
+        # Ruta simple para /categoria -> /api/categorias
+        - id: categoria-route
           uri: lb://ms-catalogo-service
           predicates:
-            - Path=/categoria, /categoria/**
+            - Path=/categoria/**
           filters:
-            - name: RewritePath
-              args:
-                regexp: /categoria/?(?<segment>.*)
-                replacement: /api/categorias/${segment}
+            - StripPrefix=1
+            - PrefixPath=/api/categorias
 
-        # Ruta para /producto -> /api/productos (compatibilidad)  
-        - id: producto-legacy
+        # Ruta simple para /categoria (sin barra final)
+        - id: categoria-root
           uri: lb://ms-catalogo-service
           predicates:
-            - Path=/producto, /producto/**
+            - Path=/categoria
           filters:
-            - name: RewritePath
-              args:
-                regexp: /producto/?(?<segment>.*)
-                replacement: /api/productos/${segment}
+            - PrefixPath=/api/categorias
 
-        # Rutas modernas /api/*
-        - id: catalogo-api
+        # Ruta simple para /producto -> /api/productos  
+        - id: producto-route
           uri: lb://ms-catalogo-service
           predicates:
-            - Path=/api/categorias/**, /api/productos/**
+            - Path=/producto/**
+          filters:
+            - StripPrefix=1
+            - PrefixPath=/api/productos
 
-        # Ruta para autenticación
+        # Ruta simple para /producto (sin barra final)
+        - id: producto-root
+          uri: lb://ms-catalogo-service
+          predicates:
+            - Path=/producto
+          filters:
+            - PrefixPath=/api/productos
+
+        # Rutas directas sin modificación
+        - id: catalogo-api-direct
+          uri: lb://ms-catalogo-service
+          predicates:
+            - Path=/api/**
+
+        # Autenticación
         - id: auth-service
           uri: lb://ms-auth-service
           predicates:
             - Path=/auth/**
 
-        # Actuator y Swagger
-        - id: catalogo-actuator
-          uri: lb://ms-catalogo-service
-          predicates:
-            - Path=/actuator/**, /doc/**, /v3/api-docs/**
-
 logging:
   level:
-    org.springframework.cloud.gateway: INFO
-    org.springframework.cloud.gateway.route: DEBUG
+    org.springframework.cloud.gateway: DEBUG
