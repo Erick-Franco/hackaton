@@ -1,106 +1,118 @@
 package com.example.mscatalogo.entity;
 
 import jakarta.persistence.*;
-
-import java.time.LocalDate;
+import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "productos")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Producto {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "El código del producto no puede estar vacío")
+    @Size(max = 20, message = "El código no puede exceder 20 caracteres")
+    @Column(unique = true, nullable = false)
     private String codigo;
 
+    @NotBlank(message = "El nombre del producto no puede estar vacío")
+    @Size(max = 150, message = "El nombre no puede exceder 150 caracteres")
+    @Column(nullable = false)
     private String nombre;
 
+    @Size(max = 500, message = "La descripción no puede exceder 500 caracteres")
     private String descripcion;
 
-    private Integer cantidad;
+    @Min(value = 0, message = "La cantidad no puede ser negativa")
+    @Column(nullable = false)
+    private Integer cantidad = 0;
 
-    private Double precioCompra;
+    @DecimalMin(value = "0.0", inclusive = false, message = "El precio de compra debe ser mayor a 0")
+    @Digits(integer = 8, fraction = 2, message = "Precio de compra debe tener máximo 8 dígitos enteros y 2 decimales")
+    @Column(name = "precio_compra", precision = 10, scale = 2)
+    private BigDecimal precioCompra;
 
-    private Double precioVenta;
+    @DecimalMin(value = "0.0", inclusive = false, message = "El precio de venta debe ser mayor a 0")
+    @Digits(integer = 8, fraction = 2, message = "Precio de venta debe tener máximo 8 dígitos enteros y 2 decimales")
+    @Column(name = "precio_venta", precision = 10, scale = 2)
+    private BigDecimal precioVenta;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_id", nullable = false)
+    @NotNull(message = "La categoría es obligatoria")
     private Categoria categoria;
 
-    public Producto() {
+    // Campos específicos para productos textiles
+    @Enumerated(EnumType.STRING)
+    private TipoProducto tipoProducto;
+
+    @ElementCollection
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "producto_tallas", joinColumns = @JoinColumn(name = "producto_id"))
+    @Column(name = "talla")
+    private java.util.Set<Talla> tallasDisponibles;
+
+    @ElementCollection
+    @CollectionTable(name = "producto_colores", joinColumns = @JoinColumn(name = "producto_id"))
+    @Column(name = "color")
+    private java.util.Set<String> coloresDisponibles;
+
+    @Enumerated(EnumType.STRING)
+    private Material material;
+
+    @Column(name = "personalizable")
+    private Boolean personalizable = false;
+
+    @Column(name = "imagen_url")
+    private String imagenUrl;
+
+    @Column(name = "activo")
+    private Boolean activo = true;
+
+    @Column(name = "destacado")
+    private Boolean destacado = false;
+
+    @Column(name = "fecha_creacion")
+    private LocalDateTime fechaCreacion;
+
+    @Column(name = "fecha_actualizacion")
+    private LocalDateTime fechaActualizacion;
+
+    @PrePersist
+    protected void onCreate() {
+        fechaCreacion = LocalDateTime.now();
+        fechaActualizacion = LocalDateTime.now();
     }
 
-    public Producto(Long id, String codigo, String nombre, String descripcion, Integer cantidad, Double precioCompra, Double precioVenta, Categoria categoria) {
-        this.id = id;
-        this.codigo = codigo;
-        this.nombre = nombre;
-        this.descripcion = descripcion;
-        this.cantidad = cantidad;
-        this.precioCompra = precioCompra;
-        this.precioVenta = precioVenta;
-        this.categoria = categoria;
+    @PreUpdate
+    protected void onUpdate() {
+        fechaActualizacion = LocalDateTime.now();
     }
 
-    public Long getId() {
-        return id;
+    // Enums para mejor estructura de datos
+    public enum TipoProducto {
+        PONCHO, CHALECO, CARDIGAN, CAPA, POLIVESTIDO, SWEATER, RUANA, CHAL,
+        CASACA, CAMISETA, POLO, MOCHILA, NECESER, MONEDERO, FAJA, BOLSA,
+        BOINA_MANOPLAS, CHALINA, BOLSO, SOBRE_CAMA, COJIN, MANTA, CINTA,
+        ALPAQUITA, SERVICIO_IMPRESION, SERVICIO_SELLADO, SERVICIO_SUBLIMADO,
+        SERVICIO_VINIL, SERVICIO_DTF
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public enum Talla {
+        XS, S, M, L, XL, XXL, XXXL, 
+        TALLA_2, TALLA_4, TALLA_6, TALLA_8, TALLA_10, TALLA_12, TALLA_14, TALLA_16,
+        UNICO
     }
 
-    public String getCodigo() {
-        return codigo;
-    }
-
-    public void setCodigo(String codigo) {
-        this.codigo = codigo;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
-
-    public Integer getCantidad() {
-        return cantidad;
-    }
-
-    public void setCantidad(Integer cantidad) {
-        this.cantidad = cantidad;
-    }
-
-    public Double getPrecioCompra() {
-        return precioCompra;
-    }
-
-    public void setPrecioCompra(Double precioCompra) {
-        this.precioCompra = precioCompra;
-    }
-
-    public Double getPrecioVenta() {
-        return precioVenta;
-    }
-
-    public void setPrecioVenta(Double precioVenta) {
-        this.precioVenta = precioVenta;
-    }
-
-    public Categoria getCategoria() {
-        return categoria;
-    }
-
-    public void setCategoria(Categoria categoria) {
-        this.categoria = categoria;
+    public enum Material {
+        ALPACA, DRALON, ALPACRIL, ALGODON, POLIESTER, LANA, MIXTO
     }
 }
