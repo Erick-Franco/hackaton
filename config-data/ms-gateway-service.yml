@@ -4,7 +4,7 @@ server:
 eureka:
   client:
     serviceUrl:
-      defaultZone: ${EUREKA_URI:http://localhost:8090/eureka}
+      defaultZone: http://localhost:8090/eureka
   instance:
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
 
@@ -13,60 +13,50 @@ spring:
     gateway:
       discovery:
         locator:
-          enable: true
+          enabled: true
+          lower-case-service-id: true
       routes:
-        # Servicio de autenticación (sin filtro)
-        - id: ms-auth-service
+        # Ruta para /categoria -> /api/categorias (compatibilidad)
+        - id: categoria-legacy
+          uri: lb://ms-catalogo-service
+          predicates:
+            - Path=/categoria, /categoria/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /categoria/?(?<segment>.*)
+                replacement: /api/categorias/${segment}
+
+        # Ruta para /producto -> /api/productos (compatibilidad)  
+        - id: producto-legacy
+          uri: lb://ms-catalogo-service
+          predicates:
+            - Path=/producto, /producto/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /producto/?(?<segment>.*)
+                replacement: /api/productos/${segment}
+
+        # Rutas modernas /api/*
+        - id: catalogo-api
+          uri: lb://ms-catalogo-service
+          predicates:
+            - Path=/api/categorias/**, /api/productos/**
+
+        # Ruta para autenticación
+        - id: auth-service
           uri: lb://ms-auth-service
           predicates:
             - Path=/auth/**
 
-        # Servicio de catálogo - Rutas públicas (sin autenticación)
-        - id: ms-catalogo-public
+        # Actuator y Swagger
+        - id: catalogo-actuator
           uri: lb://ms-catalogo-service
           predicates:
-            - Path=/api/categorias/**, /api/productos/**
-          filters:
-            - RewritePath=/api/(?<segment>.*), /${segment}
-
-        # Servicio de catálogo - Rutas administrativas (con autenticación)
-        - id: ms-catalogo-admin
-          uri: lb://ms-catalogo-service
-          predicates:
-            - Path=/admin/categorias/**, /admin/productos/**
-          filters:
-            - AuthFilter
-            - RewritePath=/admin/(?<segment>.*), /api/${segment}
-
-        # Servicio de cliente (con autenticación)
-        - id: ms-cliente-service
-          uri: lb://ms-cliente-service
-          predicates:
-            - Path=/api/clientes/**
-          filters:
-            - AuthFilter
-
-        # Servicio de pedidos (con autenticación)
-        - id: ms-pedido-service
-          uri: lb://ms-pedido-service
-          predicates:
-            - Path=/api/pedidos/**
-          filters:
-            - AuthFilter
-
-        # Actuator endpoints (para monitoreo)
-        - id: ms-catalogo-actuator
-          uri: lb://ms-catalogo-service
-          predicates:
-            - Path=/actuator/**
-
-        # Swagger UI (sin autenticación para desarrollo)
-        - id: ms-catalogo-swagger
-          uri: lb://ms-catalogo-service
-          predicates:
-            - Path=/doc/**, /v3/api-docs/**
+            - Path=/actuator/**, /doc/**, /v3/api-docs/**
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    reactor.netty: DEBUG
+    org.springframework.cloud.gateway: INFO
+    org.springframework.cloud.gateway.route: DEBUG
