@@ -4,38 +4,69 @@ server:
 eureka:
   client:
     serviceUrl:
-      #defaultZone: http://localhost:8090/eureka
       defaultZone: ${EUREKA_URI:http://localhost:8090/eureka}
   instance:
-    #hostname: localhost
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
 spring:
   cloud:
     gateway:
-
       discovery:
         locator:
           enable: true
       routes:
+        # Servicio de autenticación (sin filtro)
         - id: ms-auth-service
           uri: lb://ms-auth-service
           predicates:
             - Path=/auth/**
-        - id: ms-catalogo-service
+
+        # Servicio de catálogo - Rutas públicas (sin autenticación)
+        - id: ms-catalogo-public
           uri: lb://ms-catalogo-service
           predicates:
-            - Path=/categoria/**, /producto/**
+            - Path=/api/categorias/**, /api/productos/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /${segment}
+
+        # Servicio de catálogo - Rutas administrativas (con autenticación)
+        - id: ms-catalogo-admin
+          uri: lb://ms-catalogo-service
+          predicates:
+            - Path=/admin/categorias/**, /admin/productos/**
           filters:
             - AuthFilter
+            - RewritePath=/admin/(?<segment>.*), /api/${segment}
 
+        # Servicio de cliente (con autenticación)
         - id: ms-cliente-service
           uri: lb://ms-cliente-service
           predicates:
-            - Path=/cliente/**
+            - Path=/api/clientes/**
           filters:
             - AuthFilter
 
+        # Servicio de pedidos (con autenticación)
         - id: ms-pedido-service
           uri: lb://ms-pedido-service
           predicates:
-            - Path=/pedido/**
+            - Path=/api/pedidos/**
+          filters:
+            - AuthFilter
+
+        # Actuator endpoints (para monitoreo)
+        - id: ms-catalogo-actuator
+          uri: lb://ms-catalogo-service
+          predicates:
+            - Path=/actuator/**
+
+        # Swagger UI (sin autenticación para desarrollo)
+        - id: ms-catalogo-swagger
+          uri: lb://ms-catalogo-service
+          predicates:
+            - Path=/doc/**, /v3/api-docs/**
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: DEBUG
